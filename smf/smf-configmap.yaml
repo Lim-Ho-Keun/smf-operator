@@ -1,0 +1,211 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smf-run
+  namespace: 5gc-smf
+data:
+  start.sh: |-
+    rm /SMF/cfg/smp.cfg
+    cat /root/run/smp.cfg > /SMF/cfg/smp.cfg.1
+    rm /opt/stiSOP/conf/sopagt.cfg
+    cat /root/run/sopagt.cfg > /opt/stiSOP/conf/sopagt.cfg
+    N4_IP=`ifconfig eth0 |grep "inet " |awk '{print $2}'`
+    sed "s/0.0.0.0/$N4_IP/g" /SMF/cfg/smp.cfg.1 > /SMF/cfg/smp.cfg
+    echo "server omp" >> /etc/chrony.conf
+    /usr/sbin/ntpd -u ntp:ntp -g
+    /opt/stiSOP/oamd.boot start
+    /opt/stiSOP/oamd.boot stop
+    /opt/stiSOP/oamd.boot start
+
+  sopagt.cfg: |-
+    ##### for EMS connection
+    # changing addr or port, must restart sopagt
+    manager-addr = 220.123.31.30
+    mmc-port   = 20270
+    event-port = 20271
+
+    ##### for IPC connection
+    # changing ipc-type, must restart sopagt
+    ipc-type = 1 # 0:NONE, 1:UDP, 2:TCP, 3:EPOINT (+10: use padding)
+    # for EPOINT (cluster-name, sopagt-svc-name, mp-svc-orgclass-no : mp-svc-name, ...)
+    epoint = #SVC, SOPA, 2:MMLD, 5:STATD
+
+    ##### for MML
+    sys-group-name = TB_SMF
+    EMS_MML_CFG_NAME = /opt/stiSOP/conf/mml.cfg
+    # MML for sopagt (mml : cmd-no : mml-data) ref. EMS_MML_CFG_NAME
+    MML = HELP:0, DIS-SYS:6001, DIS-VER:0:/path, DIS-CPU:6011, DIS-MEM:6013, DIS-FS:6015, DIS-NIC:6017, DIS-RESC:0, DIS-PROC:6031, START-PROC:6033, STOP-PROC:6035, RESTART-PROC:6037, CHG-LOG-PROC:0, DIS-NTP:0, ADD-NTP:0, DEL-NTP:0, DIS-LOGWORD:0, ADD-LOGWORD:0, DEL-LOGWORD:0, DIS-DELTOOL:0, ADD-DELTOOL:0, DEL-DELTOOL:0, DIS-BACKUP:0:/path, BACKUP:0:/path, RESTORE:0:/path, REBOOT:0
+    new-mmlpod   = 1, 0 # MML-style(0:OLD), POD-tab
+    ipv6         = 1 # 0:OFF
+    version      = R1.0.0
+    release-date = 2023-06-01
+    #mmi-port     = 20010
+    #mmi-passwd   = admin
+
+    ##### for SYSSTAT
+    stat-get-period = 15
+    stat-snd-period = 15
+
+    # SOP-EXTEND for sopagt (subtype-no=0 is not use)
+    # SYS-STAT/EVENT (name : subtype-no : payload-id : location)
+    SE-SYSSTAT = PROC:2:2, THREAD:0:0, CPU:3:11, MEM:3:13, RAM:0:0, DISK:0:0, FS:3:14, NIC:3:15:35, PS:0:0, FAN:0:0, TEMP:0:0, CTRL:0:0, SW:0:0, NTP:0:0, FD:3:26, IO:0:0, NETAPP:0:0, LOGMON:0
+
+    # add '/' at the end of name, watch thread-hang
+    dupproc = scan, sopagt, smp
+    dupkeys = # use it when dupproc is not enough.
+
+    NOT_USED_NIC = #em2, em3, em4
+    ##### for PM
+    SE-PM-TERM = 5 # MINUTE (0: disabled)
+    # PM-MSG (name : subtype-no)
+    SE-PM = CPU:3, MEM:4, DISK:5
+
+    ##### for LOG
+    LOG_CFG_PATH = /var/log/stiLOG/salog.cfg
+    log-dump     = 0 # 0:OFF
+
+  smp.cfg: |-
+    [SYSTEM]
+    PKG_NAME=SMF
+    SYS_NAME=VSMF
+    PROC_NAME=SMP
+    #SYS_NO=0
+    SYS_HOST_1=vsmf1
+    SYS_HOST_2=vsmf2
+    SMF_NAME=ncSmf-eflex-10
+    NODE_ID=1
+
+    [LICENSE]
+    LIC_SO_PATH=/lib/5gc-license
+
+    [TIMER]
+    RECON_INTERVAL=50 #100 msec
+    HANG_DURATION=60
+    ABNORMAL_DURATION=300
+    HEARBEAT_INTERVAL=600
+    #HEARBEAT_INTERVAL=1800
+    RSP_WAIT=20 #100 msec
+    #DUP_HOLD_TIME=3600 #100 msec
+    #DUP_HOLD_TIME=1200 #100 msec
+    DUP_HOLD_TIME=600 #100 msec
+
+    [PFCP_TIMER]
+    T1_TIMER=20
+    N1_COUNTER=3
+    ECHO_INTERVAL=600
+    ECHO_COUNT=3
+
+    [LOG]
+    LOG_FILE=/SMF/log/SMP/smp.log
+    LOG_FLAG=Warning,Error,Trace
+    #LOG_FLAG=Warning,Error,Trace,Debug
+    #LOG_FLAG=Warning,Error,Trace,Debug,In/Out
+    #LOG_FLAG=Trace,Warning,Error,Log,Test,Timer,Devel,Maint,Debug,In/Out
+    LOG_MAX_SIZE=100
+    LOG_MAX_CNT=10
+
+    [SBI_SEVER]
+    MY_ADDR=0.0.0.0
+    MY_PORT=80
+    USE_TLS=YES
+    TLS_PORT=443
+    TLS_KEY=smf.key
+    TLS_PEM=smf.pem
+    [SBI_CLIENT]
+    NRF_ADDR=127.0.0.10
+    NRF_PORT=7777
+    #AMF_ADDR=172.30.11.179
+    AMF_ADDR=10.104.44.110
+    AMF_PORT=80
+    UDM_ADDR=10.104.44.110
+    UDM_PORT=80
+
+    [N4_SERVER]
+    MY_ADDR=192.168.40.36
+    MY_PORT=8805
+    DEF_QFI=6
+    DEF_5QI=9
+    DEF_SESSAMBR_UL=1
+    DEF_SESSAMBR_DL=1
+
+    [N4_CLIENT]
+    UPF_ADDR=192.168.40.35
+    UPF_PORT=8805
+
+    [UE]
+    ADDR_CNT=0
+    ADDR1=100.100.0.1
+    ADDR2=100.100.0.2
+    ADDR_POOL=100.130.0.1/21
+
+    [JDR]
+    JDRCnt=0
+    JDRFile1=SMF_STAT_SMF_N4_CLOG
+    JDRWriteDir1=/SMF/data/Doing
+    JDRMoveDir1=/SMF/data/Done
+    JDRSplitPeriod1=5
+    JDRExtern1=
+    JDRHeader1=
+
+    [DEFAULT_PFD]
+    APP_ID=1
+
+    [DEFAULT_URR]
+    #Measurement Method
+    MEAS_METHOD_DURAT=0
+    MEAS_METHOD_VOLUM=1
+    MEAS_METHOD_EVENT=1
+    ##Report Trigger
+    REPO_TRIGGE_PERIO=0
+    REPO_TRIGGE_VOLTH=1
+    REPO_TRIGGE_TIMTH=0
+    REPO_TRIGGE_QUHTI=0
+    REPO_TRIGGE_START=1
+    REPO_TRIGGE_STOPT=0
+    REPO_TRIGGE_DROTH=0
+    REPO_TRIGGE_LIUSA=0
+    REPO_TRIGGE_VOLQU=0
+    REPO_TRIGGE_TIMQU=0
+    REPO_TRIGGE_MACAR=0
+    REPO_TRIGGE_EVETH=0
+    REPO_TRIGGE_EVEQU=0
+    REPO_TRIGGE_IPMJL=0
+    REPO_TRIGGE_QUVTI=0
+    REPO_TRIGGE_REEMR=0
+    #Measurement Period
+    MEAS_PERIOD=30
+    ##Volume Threshold (total, up, down)
+    ##VOL_THR_TO=1048576
+    VOL_THR_TO=1048576
+    VOL_THR_UP=0
+    VOL_THR_DN=0
+    ##Volume Quota (total, up, down)
+    VOL_QUO_TO=0
+    VOL_QUO_UP=0
+    VOL_QUO_DN=0
+    #Event Threshold
+    EVN_THR=1000
+    ##Event Quota
+    EVN_QUO=0
+    #Time Threshold
+    TIM_THR=0
+    ##Time Quota
+    TIM_QUO=0
+    ##Quota Holding Time
+    QUO_HOD_TIM=0
+    #Dropped DL Traffic Threshold (downlink packets , number of bytes downlink data)
+    DRO_DL_THR_PACKETS=5
+    DRO_DL_THR_NUMBYTE=5000000
+    #Monitoring Time (YYYYMMDDhhmmss..)
+    MON_TIME=20230613120101
+    #Inactivity Detection Time(in second)
+    INACT_TIM=60
+    ##Measurement Information
+    MEAS_INFO_MBQE=0
+    MEAS_INFO_INAM=0
+    MEAS_INFO_RADI=0
+    MEAS_INFO_ISTM=0
+    MEAS_INFO_MNOP=0
+    ##Number of Reports(Rel16)
+    NUM_REPORTS=0
+

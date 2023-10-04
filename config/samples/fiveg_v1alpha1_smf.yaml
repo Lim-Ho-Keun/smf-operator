@@ -1,0 +1,13 @@
+apiVersion: fiveg.kt.com/v1alpha1
+kind: SMF
+metadata:
+  labels:
+    app.kubernetes.io/name: smf
+    app.kubernetes.io/instance: smf-sample
+    app.kubernetes.io/part-of: smf-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: smf-operator
+  name: smf-sample
+  namespace: 5gc-smf
+spec:
+  # TODO(user): Add fields here

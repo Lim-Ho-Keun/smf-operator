@@ -1,0 +1,31 @@
+# permissions for end users to edit smfs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: smf-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: smf-operator
+    app.kubernetes.io/part-of: smf-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: smf-editor-role
+rules:
+- apiGroups:
+  - fiveg.kt.com
+  resources:
+  - smfs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - fiveg.kt.com
+  resources:
+  - smfs/status
+  verbs:
+  - get
